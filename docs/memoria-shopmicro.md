@@ -414,6 +414,7 @@ Ya realizado:
 - validación de servicios y pods
 - demostración del flujo de productos y del flujo de pedido con notificación
 - rolling update real de `product-service` desde `1.0.0` a `1.1.0`
+- prueba de self-healing eliminando manualmente un pod y verificando su recreación automática
 
 Pendiente:
 

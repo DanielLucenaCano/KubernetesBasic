@@ -266,6 +266,60 @@ Trabajo pendiente:
 - documentación del proceso de actualización de imagen
 - comparación final más extensa entre Swarm y Kubernetes
 
+## 15. Prueba de self-healing en Kubernetes
+
+Para cerrar el apartado de Kubernetes se realizó una prueba adicional de recuperación automática, equivalente al mecanismo de self-healing propio de Kubernetes.
+
+### 15.1. Estado previo
+
+Antes de la prueba, el deployment `product-service` tenía dos réplicas activas y disponibles.
+
+Comprobación usada:
+
+```powershell
+kubectl get pods -n shopmicro -l app=product-service -o wide
+```
+
+### 15.2. Eliminación manual de un pod
+
+Se eliminó manualmente una réplica del deployment:
+
+```powershell
+kubectl delete pod product-service-7559548fb-6259g -n shopmicro
+```
+
+### 15.3. Recuperación automática
+
+Tras la eliminación, Kubernetes lanzó automáticamente un nuevo pod para mantener el número deseado de réplicas:
+
+```powershell
+kubectl wait --for=condition=ready pod -l app=product-service -n shopmicro --timeout=180s
+kubectl get pods -n shopmicro -l app=product-service -o wide
+```
+
+Resultado observado:
+
+- el pod eliminado desapareció del clúster
+- se creó automáticamente un nuevo pod `product-service-7559548fb-gwwkb`
+- el deployment volvió a quedar con 2/2 réplicas en estado `Running`
+
+### 15.4. Verificación funcional posterior
+
+Se volvió a comprobar la API:
+
+```powershell
+Invoke-RestMethod -Uri 'http://127.0.0.1:18081/api/products' | ConvertTo-Json -Depth 6
+```
+
+Resultado:
+
+- la API siguió respondiendo correctamente
+- `product-service` continuó mostrando `version: 1.1.0`
+
+### 15.5. Conclusión de la prueba
+
+La prueba confirma el mecanismo de self-healing de Kubernetes: cuando una réplica desaparece, el controlador del deployment crea automáticamente otra para restaurar el estado deseado sin intervención manual adicional.
+
 ## 14. Rolling update de `product-service`
 
 Como siguiente ejercicio de Kubernetes se realizó una actualización real de la imagen de `product-service`, pasando de la versión `1.0.0` a la `1.1.0`.
@@ -354,7 +408,21 @@ También se comprobó que el catálogo seguía operativo y que el stock se mante
 
 El rolling update se realizó con éxito. Kubernetes reemplazó las réplicas antiguas de `product-service` por las nuevas sin dejar el servicio indisponible, lo que demuestra el funcionamiento práctico del mecanismo de actualización progresiva exigido en la fase 4.
 
-## 15. Archivos clave utilizados en esta fase
+## 16. Evidencias técnicas guardadas
+
+Se ha generado un archivo de apoyo con salidas útiles de validación:
+
+- [k8s-evidencias.txt](/C:/Users/G513/OneDrive%20-%20Sa%20Palomera/Documentos/Codex/shopmicro/docs/k8s-evidencias.txt)
+
+Este archivo contiene:
+
+- `kubectl get pods -n shopmicro -o wide`
+- `kubectl get services -n shopmicro`
+- `kubectl describe deployment product-service -n shopmicro`
+- resumen textual de la prueba de self-healing
+- respuesta de la API tras la recuperación
+
+## 17. Archivos clave utilizados en esta fase
 
 - [k8s/infra/namespace.yaml](/C:/Users/G513/OneDrive%20-%20Sa%20Palomera/Documentos/Codex/shopmicro/k8s/infra/namespace.yaml)
 - [k8s/infra/db-products.yaml](/C:/Users/G513/OneDrive%20-%20Sa%20Palomera/Documentos/Codex/shopmicro/k8s/infra/db-products.yaml)
