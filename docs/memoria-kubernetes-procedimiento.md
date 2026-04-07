@@ -263,11 +263,98 @@ Trabajo completado:
 Trabajo pendiente:
 
 - capturas de pantalla numeradas para el documento final
-- rolling update real de `product-service`
 - documentación del proceso de actualización de imagen
 - comparación final más extensa entre Swarm y Kubernetes
 
-## 14. Archivos clave utilizados en esta fase
+## 14. Rolling update de `product-service`
+
+Como siguiente ejercicio de Kubernetes se realizó una actualización real de la imagen de `product-service`, pasando de la versión `1.0.0` a la `1.1.0`.
+
+### 14.1. Preparación de la nueva versión
+
+Se modificó el servicio para que expusiera la versión por API en:
+
+- `/health`
+- `/products`
+
+Además, se actualizó el manifiesto [k8s/base/product-service.yaml](/C:/Users/G513/OneDrive%20-%20Sa%20Palomera/Documentos/Codex/shopmicro/k8s/base/product-service.yaml) para reflejar:
+
+- imagen `shopmicro/product-service:1.1.0`
+- variable `APP_VERSION: "1.1.0"`
+
+### 14.2. Construcción y carga de la nueva imagen
+
+```powershell
+docker build -t shopmicro/product-service:1.1.0 C:\Users\G513\OneDrive - Sa Palomera\Documentos\Codex\shopmicro\product-service
+& 'C:\Program Files\Kubernetes\Minikube\minikube.exe' image load shopmicro/product-service:1.1.0
+```
+
+### 14.3. Estado previo del deployment
+
+Antes del cambio, el deployment usaba:
+
+```powershell
+kubectl get deployment product-service -n shopmicro -o jsonpath="{.spec.template.spec.containers[0].image}"
+```
+
+Resultado:
+
+```text
+shopmicro/product-service:1.0.0
+```
+
+### 14.4. Ejecución del rolling update
+
+El cambio de imagen se ejecutó con:
+
+```powershell
+kubectl set image deployment/product-service product-service=shopmicro/product-service:1.1.0 -n shopmicro
+kubectl rollout status deployment/product-service -n shopmicro --timeout=300s
+kubectl rollout history deployment/product-service -n shopmicro
+```
+
+Resultado observado:
+
+- el deployment creó nuevos pods sin detener el servicio completo
+- las réplicas antiguas fueron terminando progresivamente
+- el `rollout status` finalizó correctamente
+- el historial del deployment pasó a `REVISION 2`
+
+### 14.5. Sincronización del ConfigMap y reinicio controlado
+
+Para alinear la configuración declarativa con la nueva versión, se aplicó después el manifiesto actualizado y se reinició el deployment:
+
+```powershell
+kubectl apply -f C:\Users\G513\OneDrive - Sa Palomera\Documentos\Codex\shopmicro\k8s\base\product-service.yaml
+kubectl rollout restart deployment/product-service -n shopmicro
+kubectl rollout status deployment/product-service -n shopmicro --timeout=300s
+```
+
+### 14.6. Verificación posterior
+
+Se comprobó la nueva versión mediante la API:
+
+```powershell
+Invoke-RestMethod -Uri 'http://127.0.0.1:18081/api/products' | ConvertTo-Json -Depth 6
+```
+
+Resultado observado:
+
+```json
+{
+  "service": "product-service",
+  "source": "database",
+  "version": "1.1.0"
+}
+```
+
+También se comprobó que el catálogo seguía operativo y que el stock se mantenía correctamente tras la actualización.
+
+### 14.7. Conclusión del ejercicio
+
+El rolling update se realizó con éxito. Kubernetes reemplazó las réplicas antiguas de `product-service` por las nuevas sin dejar el servicio indisponible, lo que demuestra el funcionamiento práctico del mecanismo de actualización progresiva exigido en la fase 4.
+
+## 15. Archivos clave utilizados en esta fase
 
 - [k8s/infra/namespace.yaml](/C:/Users/G513/OneDrive%20-%20Sa%20Palomera/Documentos/Codex/shopmicro/k8s/infra/namespace.yaml)
 - [k8s/infra/db-products.yaml](/C:/Users/G513/OneDrive%20-%20Sa%20Palomera/Documentos/Codex/shopmicro/k8s/infra/db-products.yaml)
@@ -280,4 +367,3 @@ Trabajo pendiente:
 - [k8s/base/order-service.yaml](/C:/Users/G513/OneDrive%20-%20Sa%20Palomera/Documentos/Codex/shopmicro/k8s/base/order-service.yaml)
 - [k8s/base/user-service.yaml](/C:/Users/G513/OneDrive%20-%20Sa%20Palomera/Documentos/Codex/shopmicro/k8s/base/user-service.yaml)
 - [k8s/base/notification-service.yaml](/C:/Users/G513/OneDrive%20-%20Sa%20Palomera/Documentos/Codex/shopmicro/k8s/base/notification-service.yaml)
-

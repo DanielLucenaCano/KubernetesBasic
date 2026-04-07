@@ -413,10 +413,10 @@ Ya realizado:
 - verificación básica del entorno Kubernetes
 - validación de servicios y pods
 - demostración del flujo de productos y del flujo de pedido con notificación
+- rolling update real de `product-service` desde `1.0.0` a `1.1.0`
 
 Pendiente:
 
-- rolling update real de `product-service`
 - documentación final con capturas numeradas
 - repetición documentada y completa de todos los flujos desde frontend con evidencia visual
 - cierre comparativo final entre Swarm y Kubernetes

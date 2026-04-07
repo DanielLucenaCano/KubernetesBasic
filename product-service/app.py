@@ -7,6 +7,7 @@ import redis
 
 
 app = Flask(__name__)
+APP_VERSION = os.getenv("APP_VERSION", "1.0.0")
 
 
 def env_value(name: str, default: str = "") -> str:
@@ -45,14 +46,25 @@ def normalize_product(row: dict) -> dict:
 
 @app.get("/health")
 def health():
-    return {"status": "ok", "service": "product-service"}, 200
+    return {
+        "status": "ok",
+        "service": "product-service",
+        "version": APP_VERSION,
+    }, 200
 
 
 @app.get("/products")
 def list_products():
     cached = cache_client.get("products:all")
     if cached:
-        return jsonify({"source": "cache", "items": json.loads(cached)})
+        return jsonify(
+            {
+                "source": "cache",
+                "service": "product-service",
+                "version": APP_VERSION,
+                "items": json.loads(cached),
+            }
+        )
 
     with mysql_connection() as connection:
         with connection.cursor() as cursor:
@@ -66,7 +78,14 @@ def list_products():
             items = [normalize_product(item) for item in cursor.fetchall()]
 
     cache_client.setex("products:all", CACHE_TTL, json.dumps(items))
-    return jsonify({"source": "database", "items": items})
+    return jsonify(
+        {
+            "source": "database",
+            "service": "product-service",
+            "version": APP_VERSION,
+            "items": items,
+        }
+    )
 
 
 @app.post("/products")
